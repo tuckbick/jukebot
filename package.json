@@ -1,0 +1,16 @@
+{
+  "name": "jukebot",
+  "description": "JukeBot! Spotify -> LastFm -> IRC",
+  "version": "0.1",
+  "author": {
+    "name": "Tucker Bickler",
+    "email": "tuckersworld@gmail.com"
+  },
+  "dependencies": {
+    "irc": "*",
+    "underscore": "*",
+    "net": "*",
+    "lastfm": "*",
+    "spotify": "*"
+  }
+}
