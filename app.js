@@ -1,133 +1,104 @@
-var jukebot = (function() { var
+var Bot = new require('./node_modules/TuckBot/TuckBot').TuckBot,
+    lastFmNode = require('lastfm').LastFmNode, lastFmStream, lastFmName,
+    spotify = require('spotify'),
+    tracks = [];
 
-    lastfm, lastfmStream, lastFmName, tracks = [],
-    client, command, channels, from,
-    spot,
-    exec,
+var lastFm = new lastFmNode({
+    api_key: '',
+    secret : ''
+});
 
-    init = function(c,lfm,s,x) {
-        client = c;
-        lastfm = lfm;
-        spot = s;
-        exec = x;
-        channels = client.opt.channels;
-        client.addListener('pm', handleMessage);
-        channels.forEach(function(chan) {
-            client.addListener('message'+chan, handleMessage);
-        })
-    },
+function JukeBot(server, nick, opt) {
 
-    handleMessage = function(f, msg) {
-        command = msg.trim().match(/^jukebot(.*)+/gi);
-        if (command != null) {
-            command = command[0].split(' ');
-            command.shift();
-            from = f;
-            handleCommand();
-        }
-    },
+    var self = this,
+        bot = new Bot(server, nick, opt);
 
-    handleCommand = function() {
-        if (api.hasOwnProperty(command[0])) {
-            api[command[0]]();
-        }
-    },
+    self.doHelp = function(from, args, info) {
+        var msg = 'help: show this message\n'
+                + 'lastfm <name>: set lastfm name\n'
+                + 'start: begin to show songs\n'
+                + 'stop: stop showing songs\n'
+                + 'spotify: get spotify uri for last played song\n'
+                + 'list: show the last 10 played songs'
+            ;
+        bot.reply(from, msg, info);
+    }
 
-    broadcast = function(msg) {
-        channels.forEach(function(chan) {
-            client.say(chan,msg);
-        });
-    },
+    self.stop = function(from, args, info) {
+        if (lastFmStream !== undefined)
+            lastFmStream.stop();
+    }
 
-    decorateTrack = function(t) {
-        return "♫ ♫ ~ " + t.artist['#text'] + " - " + t.name + " ~ ♫ ♫";
-    },
+    self.decorateTrack = function(track) {
+        return "♫ ♫ ~ " + track.artist['#text'] + " - " + track.name + " ~ ♫ ♫";
+    }
 
-    nowPlaying = function(t) {
-        t.text = decorateTrack(t);
-        tracks.unshift(t);
+    self.logTrack = function(track) {
+        track.text = self.decorateTrack(track);
+        tracks.unshift(track);
         if (tracks.length > 10)
             tracks.pop();
-        broadcast(t.text);
-    },
+    }
 
-    showHelp = function() {
-        broadcast('help: show this message\nlastfm <name>: set lastfm name\nstart: begin to show songs\nstop: stop showing songs\nspotify: get spotify uri for last played song\nlist: show the last 10 played songs');
-    },
+    bot.api = {
 
-    reply = function(msg) {
-        broadcast(from + ': ' + msg);
-    },
+        '?': self.doHelp,
+        help: self.doHelp,
 
-    api = {
-        '?': showHelp,
-        help: showHelp,
-        start: function() {
-            if (lastFmName == null || lastfmStream == null) {
-                reply('set lastfm name first');
+        start: function(from, args, info) {
+            if (lastFmName == null || lastFmStream == null) {
+                bot.reply(from, '!!! set lastfm name first', info);
                 return;
             }
-            lastfmStream.start();
+            lastFmStream.start();
         },
-        stop: function() {
-            if (lastfmStream !== undefined)
-                lastfmStream.stop();
+
+        stop: self.stop,
+
+        lastfm: function(from, args, info) {
+            self.stop();
+            lastFmName = args[0];
+            lastFmStream = lastFm.stream(lastFmName);
+            lastFmStream.on('nowPlaying', function(track) {
+                self.logTrack(track);
+                bot.reply(from, track.text, info);
+            });
         },
-        lastfm: function() {
-            this.stop();
-            lastFmName = command[1];
-            lastfmStream = lastfm.stream(lastFmName);
-            lastfmStream.on('nowPlaying', nowPlaying);
-        },
-        spotify: function() {
+
+        spotify: function(from, args, info) {
             if (tracks.length <= 0) {
-                reply('play a song first');
+                bot.reply(from, '!!! play a song first', info);
             };
 
             var q = tracks[0].name + ' ' + tracks[0].artist['#text'];
             if (tracks[0].album['#text'] != '')
                 q += ' ' + tracks[0].album['#text'];
 
-            spot.search({ type: 'track', query: q }, function(err, data) {
+            spotify.search({ type: 'track', query: q }, function(err, data) {
                 if (err) return;
 
                 if (data.tracks.length > 0)
-                    reply(data.tracks[0].href);
+                    bot.reply(from, data.tracks[0].href, info);
                 else
-                    reply('no songs found on spotify');
+                    bot.reply(from, 'no songs found on spotify', info);
             });
         },
-        list: function() {
+
+        list: function(from, args, info) {
+            if (!tracks.length) {
+                bot.reply(from, 'no recent tracks', info);
+                return;
+            }
             var msg = '';
             tracks.forEach(function(track) {
                 msg = track.text + '\n' + msg;
             });
-            broadcast(msg);
-        },
-        // test: function() {
-        //     exec("open spotify:track:58HpsDKeYoLtNhXFQyQmz5");
-        // }
+            bot.reply(from, msg, info);
+        }
     }
+}
 
-    return {
-        init: init
-    }
-})();
-
-
-var irc = require('irc'),
-    LastFmNode = require('lastfm').LastFmNode,
-    spotify = require('spotify'),
-    exec = require('child_process').exec;
-
-var client = new irc.Client('irc.freenode.net', 'jukebot', {
+var jukebot = new JukeBot('irc.freenode.net', 'jukebot', {
     channels: ['#irc'],
     // debug: true
-});
-
-var lastfm = new LastFmNode({
-    api_key: '',
-    secret : ''
-});
-
-jukebot.init(client, lastfm, spotify, exec);
+})
