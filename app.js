@@ -1,11 +1,12 @@
-var Bot = new require('./node_modules/TuckBot/TuckBot').TuckBot,
+var Bot = new require('./node_modules/tuckbot').TuckBot,
     lastFmNode = require('lastfm').LastFmNode, lastFmStream, lastFmName,
     spotify = require('spotify'),
+    Configs = require('./configs.js').Configs,
     tracks = [];
 
 var lastFm = new lastFmNode({
-    api_key: '',
-    secret : ''
+    api_key: 'e46b1634c50dcb82127e3874e8f94e15',
+    secret : 'cd681c4820bbf757ceee729a86b59d98'
 });
 
 function JukeBot(server, nick, opt) {
@@ -98,7 +99,9 @@ function JukeBot(server, nick, opt) {
     }
 }
 
-var jukebot = new JukeBot('irc.freenode.net', 'jukebot', {
-    channels: ['#irc'],
-    // debug: true
-})
+if(process.argv.length > 2 && typeof Configs[process.argv[2]] !== "undefined") {
+    var config = Configs[process.argv[2]];
+    var jukebot = new JukeBot(config[0], config[1], config[2]);
+} else {
+    console.log("usage: node app.js <server> <nick> <opts>");
+}
