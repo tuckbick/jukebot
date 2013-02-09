@@ -11,6 +11,7 @@
     "underscore": "*",
     "net": "*",
     "lastfm": "*",
-    "spotify": "*"
+    "spotify": "*",
+    "spotify-node-applescript": "*"
   }
 }

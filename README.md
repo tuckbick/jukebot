@@ -14,9 +14,3 @@ Inside your new configs.js, setup your desired config(s). Note that commented-ou
 Then run your node:
 
 		$ > node app.js [config]
-
-
-If you're setup properly, jukebot should join your selected channels. To operate, simply talk to Jukebot in the IRC channel:
-
-		jukebot lastfm [username]
-		jukebot start
